@@ -82,6 +82,7 @@ func ProcessLog(file io.Reader, topk int, strict bool) error {
 
 	m := make(map[string]int)
 	total := 0
+	malformed := 0
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -93,6 +94,7 @@ func ProcessLog(file io.Reader, topk int, strict bool) error {
 			}
 
 			fmt.Printf("Warning: %v\n", err)
+			malformed++
 			continue
 		}
 
@@ -123,6 +125,7 @@ func ProcessLog(file io.Reader, topk int, strict bool) error {
 	fmt.Println("Summary statistics:")
 
 	fmt.Printf("Total entries: %d\n", total)
+	fmt.Printf("Malformed entries: %d\n", malformed)
 
 	fmt.Printf("Top %d entries:\n", topk)
 	for i := 0; i < topk && i < len(sorted); i++ {
