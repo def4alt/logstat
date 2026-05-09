@@ -8,12 +8,23 @@ import (
 	"strings"
 )
 
-// host ident user [timestamp] "method path protocol" status bytes
-func processLine(line string, strict bool) ([7]string, error) {
-	inBrackets := false
-	inQuotes := false
+type LogEntry struct {
+	Host      string
+	Ident     string
+	User      string
+	Timestamp string
+	Method    string
+	Path      string
+	Protocol  string
+	Status    string
+	Bytes     string
+}
 
-	var parts [7]string
+// host ident user [timestamp] "method path protocol" status bytes
+func processLine(line string, strict bool) (LogEntry, error) {
+	inBrackets := false
+
+	var parts [9]string
 	current := 0
 
 	var builder strings.Builder
@@ -21,7 +32,7 @@ func processLine(line string, strict bool) ([7]string, error) {
 	for i := 0; i < len(line); i++ {
 		c := line[i]
 
-		if c == ' ' && !inBrackets && !inQuotes && current < len(parts) {
+		if c == ' ' && !inBrackets && current < len(parts) {
 			parts[current] = builder.String()
 			current++
 			builder.Reset()
@@ -34,7 +45,6 @@ func processLine(line string, strict bool) ([7]string, error) {
 		case ']':
 			inBrackets = false
 		case '"':
-			inQuotes = !inQuotes
 		default:
 			builder.WriteByte(c)
 		}
@@ -46,11 +56,23 @@ func processLine(line string, strict bool) ([7]string, error) {
 		current++
 	}
 
-	if current < 7 && strict {
-		return parts, fmt.Errorf("unexpected log format: %s", line)
+	entry := LogEntry{
+		Host:      parts[0],
+		Ident:     parts[1],
+		User:      parts[2],
+		Timestamp: parts[3],
+		Method:    parts[4],
+		Path:      parts[5],
+		Protocol:  parts[6],
+		Status:    parts[7],
+		Bytes:     parts[8],
 	}
 
-	return parts, nil
+	if current < 9 && strict {
+		return entry, fmt.Errorf("unexpected log format: %s", line)
+	}
+
+	return entry, nil
 }
 
 func ProcessLog(file io.Reader, topk int, strict bool) {
@@ -64,13 +86,13 @@ func ProcessLog(file io.Reader, topk int, strict bool) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		parts, err := processLine(line, strict)
+		entry, err := processLine(line, strict)
 		if err != nil {
 			fmt.Printf("Warning: %v\n", err)
 			continue
 		}
 
-		key := parts[0]
+		key := entry.Host
 
 		m[key]++
 		total++
