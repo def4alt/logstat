@@ -9,7 +9,7 @@ import (
 type Config struct {
 	FilePath string
 	JSON     bool
-	TopN     int
+	TopK     int
 	Strict   bool
 }
 
@@ -25,9 +25,9 @@ func Run(config Config) error {
 			}
 		}()
 
-		parser.ProcessLog(file)
+		parser.ProcessLog(file, config.TopK)
 	} else {
-		parser.ProcessLog(os.Stdin)
+		parser.ProcessLog(os.Stdin, config.TopK)
 	}
 
 	return nil

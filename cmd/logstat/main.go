@@ -22,7 +22,7 @@ func main() {
 	config := app.Config{
 		FilePath: *fileFlag,
 		JSON:     *jsonFlag,
-		TopN:     *topNFlag,
+		TopK:     *topNFlag,
 		Strict:   *strict,
 	}
 
