@@ -17,6 +17,24 @@ var (
 )
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, `Usage: logstat [options]
+
+   Analyzes log files and outputs summary statistics.
+
+   Options:
+     --file <path>   Path to the log file (reads from stdin if omitted)
+     --json          Output results in JSON format
+     --top <n>       Number of top entries to display (default: 10)
+     --strict        Abort on first malformed line instead of skipping
+
+   Examples:
+     logstat --file access.log
+     cat access.log | logstat
+     logstat --file access.log --json --top 20
+`)
+	}
+
 	flag.Parse()
 
 	config := app.Config{
