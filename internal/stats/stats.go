@@ -8,6 +8,38 @@ import (
 	"github.com/def4alt/logstat/internal/types"
 )
 
+type Summary struct {
+	TotalEntries     int
+	SkippedEntries   int
+	TotalBytes       int
+	UniqueHosts      int
+	StatusCodeCounts map[string]int
+	MethodCounts     map[string]int
+	TopKHosts        []types.KV[int]
+	TopKPaths        []types.KV[int]
+	P50Bytes         int
+	P90Bytes         int
+	P95Bytes         int
+	P99Bytes         int
+}
+
+func GenerateSummary(entries []parser.LogEntry, skipped int, topk int) Summary {
+	return Summary{
+		TotalEntries:     TotalEntries(entries),
+		SkippedEntries:   skipped,
+		TotalBytes:       TotalBytes(entries),
+		UniqueHosts:      UniqueHosts(entries),
+		StatusCodeCounts: StatusCodeCounts(entries),
+		MethodCounts:     MethodCounts(entries),
+		TopKHosts:        TopKHosts(entries, topk),
+		TopKPaths:        TopKPaths(entries, topk),
+		P50Bytes:         P50Bytes(entries),
+		P90Bytes:         P90Bytes(entries),
+		P95Bytes:         P95Bytes(entries),
+		P99Bytes:         P99Bytes(entries),
+	}
+}
+
 func numberOrZero(s string) int {
 	n, err := strconv.Atoi(s)
 	if err != nil {

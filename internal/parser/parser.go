@@ -97,8 +97,6 @@ func processLine(line string) (LogEntry, error) {
 }
 
 func ProcessLog(file io.Reader, strict bool) ([]LogEntry, int, error) {
-	fmt.Println("Processing log file...")
-
 	scanner := bufio.NewScanner(file)
 
 	var entries []LogEntry
