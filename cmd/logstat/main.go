@@ -44,6 +44,11 @@ Examples:
 		Strict:   *strict,
 	}
 
+	if config.TopK <= 0 {
+		fmt.Fprintln(os.Stderr, "Error: --top must be a positive integer")
+		os.Exit(1)
+	}
+
 	if err := app.Run(config); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}
