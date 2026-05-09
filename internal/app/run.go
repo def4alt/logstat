@@ -52,7 +52,7 @@ func Run(config Config) error {
 		entries = e
 	}
 
-	topk := stats.TopKFrequent(entries, config.TopK)
+	topk := stats.TopKHosts(entries, config.TopK)
 
 	fmt.Printf("Total entries: %d\n", len(entries))
 
