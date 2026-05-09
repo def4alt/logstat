@@ -25,9 +25,9 @@ func Run(config Config) error {
 			}
 		}()
 
-		parser.ProcessLog(file, config.TopK)
+		parser.ProcessLog(file, config.TopK, config.Strict)
 	} else {
-		parser.ProcessLog(os.Stdin, config.TopK)
+		parser.ProcessLog(os.Stdin, config.TopK, config.Strict)
 	}
 
 	return nil

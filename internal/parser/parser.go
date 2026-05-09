@@ -8,7 +8,52 @@ import (
 	"strings"
 )
 
-func ProcessLog(file io.Reader, topk int) {
+// host ident user [timestamp] "method path protocol" status bytes
+func processLine(line string, strict bool) ([7]string, error) {
+	inBrackets := false
+	inQuotes := false
+
+	var parts [7]string
+	current := 0
+
+	var builder strings.Builder
+
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+
+		if c == ' ' && !inBrackets && !inQuotes && current < len(parts) {
+			parts[current] = builder.String()
+			current++
+			builder.Reset()
+			continue
+		}
+
+		switch c {
+		case '[':
+			inBrackets = true
+		case ']':
+			inBrackets = false
+		case '"':
+			inQuotes = !inQuotes
+		default:
+			builder.WriteByte(c)
+		}
+
+	}
+
+	if builder.Len() > 0 && current < len(parts) {
+		parts[current] = builder.String()
+		current++
+	}
+
+	if current < 7 && strict {
+		return parts, fmt.Errorf("unexpected log format: %s", line)
+	}
+
+	return parts, nil
+}
+
+func ProcessLog(file io.Reader, topk int, strict bool) {
 	fmt.Println("Processing log file...")
 
 	scanner := bufio.NewScanner(file)
@@ -19,9 +64,9 @@ func ProcessLog(file io.Reader, topk int) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		parts := strings.SplitN(line, " ", 2)
-
-		if len(parts) < 2 {
+		parts, err := processLine(line, strict)
+		if err != nil {
+			fmt.Printf("Warning: %v\n", err)
 			continue
 		}
 
