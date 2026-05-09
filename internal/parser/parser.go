@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 )
 
@@ -75,14 +74,13 @@ func processLine(line string) (LogEntry, error) {
 	return entry, nil
 }
 
-func ProcessLog(file io.Reader, topk int, strict bool) error {
+func ProcessLog(file io.Reader, strict bool) ([]LogEntry, []LogEntry, error) {
 	fmt.Println("Processing log file...")
 
 	scanner := bufio.NewScanner(file)
 
-	m := make(map[string]int)
-	total := 0
-	malformed := 0
+	var entries []LogEntry
+	var malformedEntries []LogEntry
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -90,51 +88,16 @@ func ProcessLog(file io.Reader, topk int, strict bool) error {
 		entry, err := processLine(line)
 		if err != nil {
 			if strict {
-				return fmt.Errorf("malformed entry, aborting: %v", err)
+				return entries, malformedEntries, fmt.Errorf("malformed entry, aborting: %v", err)
 			}
 
 			fmt.Printf("Warning: %v\n", err)
-			malformed++
+			malformedEntries = append(malformedEntries, entry)
 			continue
 		}
 
-		key := entry.Host
-
-		m[key]++
-		total++
+		entries = append(entries, entry)
 	}
 
-	type kv struct {
-		Key   string
-		Value int
-	}
-
-	var sorted []kv
-	for k, v := range m {
-		sorted = append(sorted, kv{k, v})
-	}
-
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i].Value > sorted[j].Value
-	})
-
-	if len(sorted) > topk {
-		sorted = sorted[:topk]
-	}
-
-	fmt.Println("Summary statistics:")
-
-	fmt.Printf("Total entries: %d\n", total)
-	fmt.Printf("Malformed entries: %d\n", malformed)
-
-	fmt.Printf("Top %d entries:\n", topk)
-	for i := 0; i < topk && i < len(sorted); i++ {
-		fmt.Printf("%s: %d\n", sorted[i].Key, sorted[i].Value)
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error reading log file: %v\n", err)
-	}
-
-	return nil
+	return entries, malformedEntries, nil
 }
