@@ -56,6 +56,10 @@ func processLine(line string) (LogEntry, error) {
 		current++
 	}
 
+	if inQuotes || inBrackets {
+		return LogEntry{}, fmt.Errorf("unbalanced quotes or brackets")
+	}
+
 	if current < 7 {
 		return LogEntry{}, fmt.Errorf("too few fields: got %d, want 7", current)
 	}
@@ -73,7 +77,7 @@ func processLine(line string) (LogEntry, error) {
 		protocol = requestParts[2]
 	}
 
-	return LogEntry{
+	entry := LogEntry{
 		Host:      parts[0],
 		Ident:     parts[1],
 		User:      parts[2],
@@ -83,7 +87,13 @@ func processLine(line string) (LogEntry, error) {
 		Protocol:  protocol,
 		Status:    parts[5],
 		Bytes:     parts[6],
-	}, nil
+	}
+
+	if len(entry.Status) != 3 || entry.Status[0] < '1' || entry.Status[0] > '5' {
+		return LogEntry{}, fmt.Errorf("invalid status code: %q", entry.Status)
+	}
+
+	return entry, nil
 }
 
 func ProcessLog(file io.Reader, strict bool) ([]LogEntry, int, error) {
