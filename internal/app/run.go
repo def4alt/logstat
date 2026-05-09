@@ -17,7 +17,6 @@ type Config struct {
 
 func Run(config Config) error {
 	var entries []parser.LogEntry
-	var malformedEntries []parser.LogEntry
 
 	if config.FilePath != "" {
 		file, err := os.OpenFile(config.FilePath, os.O_RDONLY, 0o644)
@@ -30,31 +29,32 @@ func Run(config Config) error {
 			}
 		}()
 
-		e, me, err := parser.ProcessLog(file, config.Strict)
+		e, skipped, err := parser.ProcessLog(file, config.Strict)
 		if err != nil {
 			return err
 		}
 
+		if skipped > 0 {
+			fmt.Fprintf(os.Stderr, "Malformed lines skipped: %d\n", skipped)
+		}
+
 		entries = e
-		malformedEntries = me
 	} else {
-		e, me, err := parser.ProcessLog(os.Stdin, config.Strict)
+		e, skipped, err := parser.ProcessLog(os.Stdin, config.Strict)
 		if err != nil {
 			return err
 		}
 
-		entries = e
-		malformedEntries = me
-	}
+		if skipped > 0 {
+			fmt.Fprintf(os.Stderr, "Malformed lines skipped: %d\n", skipped)
+		}
 
-	for _, entry := range malformedEntries {
-		fmt.Printf("Malformed entry: %s\n", entry.Host)
+		entries = e
 	}
 
 	topk := stats.TopKFrequent(entries, config.TopK)
 
 	fmt.Printf("Total entries: %d\n", len(entries))
-	fmt.Printf("Malformed entries: %d\n", len(malformedEntries))
 
 	fmt.Printf("Top %d entries:\n", config.TopK)
 	for _, kv := range topk {

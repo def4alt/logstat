@@ -19,11 +19,12 @@ type LogEntry struct {
 	Bytes     string
 }
 
-// host ident user [timestamp] "method path protocol" status bytes
+// host ident user [timestamp] "method path (protocol)" status bytes
 func processLine(line string) (LogEntry, error) {
 	inBrackets := false
+	inQuotes := false
 
-	var parts [9]string
+	var parts [7]string
 	current := 0
 
 	var builder strings.Builder
@@ -31,7 +32,7 @@ func processLine(line string) (LogEntry, error) {
 	for i := 0; i < len(line); i++ {
 		c := line[i]
 
-		if c == ' ' && !inBrackets && current < len(parts) {
+		if c == ' ' && !inBrackets && !inQuotes && current < len(parts) {
 			parts[current] = builder.String()
 			current++
 			builder.Reset()
@@ -44,10 +45,10 @@ func processLine(line string) (LogEntry, error) {
 		case ']':
 			inBrackets = false
 		case '"':
+			inQuotes = !inQuotes
 		default:
 			builder.WriteByte(c)
 		}
-
 	}
 
 	if builder.Len() > 0 && current < len(parts) {
@@ -55,49 +56,65 @@ func processLine(line string) (LogEntry, error) {
 		current++
 	}
 
-	entry := LogEntry{
+	if current < 7 {
+		return LogEntry{}, fmt.Errorf("too few fields: got %d, want 7", current)
+	}
+
+	requestParts := strings.SplitN(parts[4], " ", 3)
+	if len(requestParts) < 2 {
+		return LogEntry{}, fmt.Errorf("invalid request: %q", parts[4])
+	}
+
+	method := requestParts[0]
+	path := requestParts[1]
+	protocol := ""
+
+	if len(requestParts) > 2 {
+		protocol = requestParts[2]
+	}
+
+	return LogEntry{
 		Host:      parts[0],
 		Ident:     parts[1],
 		User:      parts[2],
 		Timestamp: parts[3],
-		Method:    parts[4],
-		Path:      parts[5],
-		Protocol:  parts[6],
-		Status:    parts[7],
-		Bytes:     parts[8],
-	}
-
-	if current < 9 {
-		return entry, fmt.Errorf("unexpected log format: %s", line)
-	}
-
-	return entry, nil
+		Method:    method,
+		Path:      path,
+		Protocol:  protocol,
+		Status:    parts[5],
+		Bytes:     parts[6],
+	}, nil
 }
 
-func ProcessLog(file io.Reader, strict bool) ([]LogEntry, []LogEntry, error) {
+func ProcessLog(file io.Reader, strict bool) ([]LogEntry, int, error) {
 	fmt.Println("Processing log file...")
 
 	scanner := bufio.NewScanner(file)
 
 	var entries []LogEntry
-	var malformedEntries []LogEntry
+	skipped := 0
+	total := 0
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		total++
 
 		entry, err := processLine(line)
 		if err != nil {
 			if strict {
-				return entries, malformedEntries, fmt.Errorf("malformed entry, aborting: %v", err)
+				return nil, skipped, fmt.Errorf("malformed entry at %d, aborting: %v", total, err)
 			}
 
-			fmt.Printf("Warning: %v\n", err)
-			malformedEntries = append(malformedEntries, entry)
+			skipped++
 			continue
 		}
 
 		entries = append(entries, entry)
 	}
 
-	return entries, malformedEntries, nil
+	if err := scanner.Err(); err != nil {
+		return nil, skipped, err
+	}
+
+	return entries, skipped, nil
 }
