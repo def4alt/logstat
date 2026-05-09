@@ -25,9 +25,13 @@ func Run(config Config) error {
 			}
 		}()
 
-		parser.ProcessLog(file, config.TopK, config.Strict)
+		if err := parser.ProcessLog(file, config.TopK, config.Strict); err != nil {
+			return err
+		}
 	} else {
-		parser.ProcessLog(os.Stdin, config.TopK, config.Strict)
+		if err := parser.ProcessLog(os.Stdin, config.TopK, config.Strict); err != nil {
+			return err
+		}
 	}
 
 	return nil

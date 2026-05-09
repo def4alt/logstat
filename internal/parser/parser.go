@@ -21,7 +21,7 @@ type LogEntry struct {
 }
 
 // host ident user [timestamp] "method path protocol" status bytes
-func processLine(line string, strict bool) (LogEntry, error) {
+func processLine(line string) (LogEntry, error) {
 	inBrackets := false
 
 	var parts [9]string
@@ -68,14 +68,14 @@ func processLine(line string, strict bool) (LogEntry, error) {
 		Bytes:     parts[8],
 	}
 
-	if current < 9 && strict {
+	if current < 9 {
 		return entry, fmt.Errorf("unexpected log format: %s", line)
 	}
 
 	return entry, nil
 }
 
-func ProcessLog(file io.Reader, topk int, strict bool) {
+func ProcessLog(file io.Reader, topk int, strict bool) error {
 	fmt.Println("Processing log file...")
 
 	scanner := bufio.NewScanner(file)
@@ -86,8 +86,12 @@ func ProcessLog(file io.Reader, topk int, strict bool) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		entry, err := processLine(line, strict)
+		entry, err := processLine(line)
 		if err != nil {
+			if strict {
+				return fmt.Errorf("malformed entry, aborting: %v", err)
+			}
+
 			fmt.Printf("Warning: %v\n", err)
 			continue
 		}
@@ -128,4 +132,6 @@ func ProcessLog(file io.Reader, topk int, strict bool) {
 	if err := scanner.Err(); err != nil {
 		fmt.Printf("Error reading log file: %v\n", err)
 	}
+
+	return nil
 }
